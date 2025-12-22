@@ -1,0 +1,78 @@
+modules:
+  jira:projectPage:
+    - key: deduplicator-project-page
+      title: Rovo Issue Deduplicator
+      resource: projectPageUI-v2
+      resolver:
+        function: projectPageResolver
+
+  action:
+    - key: check_duplicate_issues
+      name: Check Duplicate Issues
+      function: findDuplicates
+      description: Analyzes an issue and finds potential duplicates based on similarity scoring.
+      inputs:
+        issueIdOrKey:
+          title: Issue Key
+          type: string
+          description: The issue key or ID to find duplicates for (e.g., PROJ-123)
+          required: true
+      actionVerb: GET
+
+    - key: link-as-duplicate
+      name: Link as Duplicate and Resolve
+      function: linkAsDuplicate
+      description: Links an issue as a duplicate of another and transitions it to Done.
+      inputs:
+        duplicateIssueKey:
+          title: Duplicate Issue Key
+          type: string
+          description: The issue to mark as duplicate
+          required: true
+        primaryIssueKey:
+          title: Primary Issue Key
+          type: string
+          description: The original issue to link to
+          required: true
+      actionVerb: CREATE
+
+  rovo:agent:
+    - key: issue-deduplicator-agent
+      name: Jira Issue Deduplicator
+      description: >
+        A Rovo-native capability for identifying and managing duplicate Jira issues.
+        Uses explainable, deterministic analysis — safe by design, user-controlled.
+      prompt: |
+        You are the Pit Wall Analyst. Your goal is to maintain clean data telemetry by preventing duplicate issue noise. When a user mentions a bug, call check_duplicate_issues first. If a high-score duplicate is found (>65), warn the user immediately and link the existing ticket to optimize pit crew efficiency.
+      conversationStarters:
+        - Find duplicates for this issue
+        - Check if this issue has any duplicates
+        - Link this issue as a duplicate
+      actions:
+        - check_duplicate_issues
+        - link-as-duplicate
+
+  function:
+    - key: findDuplicates
+      handler: index.findDuplicates
+    - key: linkAsDuplicate
+      handler: index.linkAsDuplicate
+    - key: projectPageResolver
+      handler: index.handler
+
+resources:
+  - key: projectPageUI-v2
+    path: static/build
+
+
+app:
+  runtime:
+    name: nodejs22.x
+    memoryMB: 256
+    architecture: arm64
+  id: ari:cloud:ecosystem::app/04ceb410-9424-49df-a39d-dd7a14b904a7
+
+permissions:
+  scopes:
+    - read:jira-work
+    - write:jira-work
